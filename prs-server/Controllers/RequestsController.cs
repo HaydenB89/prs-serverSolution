@@ -22,28 +22,30 @@ namespace prs_server.Controllers
 
         //*me PUT: api/Requests/5/Review
         [HttpPut("{id}/review")]
-        public void SetReview(Request request) {
-            if(request.Total <= 50) {
+        public async Task<IActionResult> SetReview(int id, Request request) {
+            if( request.Total <= 50) {
                 request.Status = "APPROVED";
             }
             else {
                 request.Status = "REVIEW";
             }
-            Change(request);
+
+            return await PutRequest(id, request);   
+            
         } 
 
         //*me PUT: api/Requests/5/Approve
         [HttpPut("{id}/approve")]
-        public void SetApproved(Request request) { //had this set to async, but did not like it r-sqigs everywhere
-            request.Status = "APPROVED";           //and there is nowhere to await
-            Change(request);
+        public async Task<IActionResult> SetApproved(int id, Request request) { 
+            request.Status = "APPROVED";           
+            return await PutRequest(id, request);
         }
 
         //*me PUT: api/Requests/5/Rejected
         [HttpPut("{id}/rejected")]
-        public void SetRejected(Request request) {
+        public async Task<IActionResult> SetRejected(int id, Request request) {
             request.Status = "REJECTED";
-            Change(request);
+            return await PutRequest(id, request);
         }
 
         //*me Get: api/Requests/Review/UserId
@@ -51,7 +53,7 @@ namespace prs_server.Controllers
         public async Task<ActionResult<IEnumerable<Request>>> GetRequestsInReview(int userId) {
             var requests = await _context.Requests
                                     .Where(x => x.Status == "REVIEW"
-                                            && x.UserId != userId)
+                                            && x.UserId == userId)
                                     .ToListAsync();
             return requests;
         }
@@ -60,7 +62,7 @@ namespace prs_server.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Request>>> GetRequests()
         {
-            return await _context.Requests.ToListAsync();
+            return await _context.Requests.Include(x=>x.User).ToListAsync();
         }
 
         // GET: api/Requests/5
@@ -117,11 +119,6 @@ namespace prs_server.Controllers
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetRequest", new { id = request.Id }, request);
-        }
-
-        //*me a Change method added
-        public void Change(Request user) {
-            _context.SaveChangesAsync();
         }
 
         // DELETE: api/Requests/5
