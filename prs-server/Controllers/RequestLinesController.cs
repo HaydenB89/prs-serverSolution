@@ -20,18 +20,42 @@ namespace prs_server.Controllers
             _context = context;
         }
 
+        //*me PUT: api/RequestLines/Recalculate/5
+        [HttpPut("recalculate/{requestId}")]
+        private async Task<IActionResult> RecalculateRequest(int requestId) {
+
+            var request = await _context.Requests.FindAsync(requestId);
+
+            request.Total = (from rl in _context.RequestLines
+                             join p in _context.Products
+                             on rl.ProductId equals p.Id
+                             where rl.RequestId == requestId
+                             select new {
+                                 LineTotal = rl.Qty * p.Price
+                             }).Sum(x => x.LineTotal);
+             await _context.SaveChangesAsync();
+
+            return NoContent(); 
+
+        }
+
         // GET: api/RequestLines
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RequestLine>>> GetRequestLines()
         {
-            return await _context.RequestLines.ToListAsync();
+            return await _context.RequestLines
+                                    .Include(x => x.Request)
+                                    .Include(x => x.Product)
+                                    .ToListAsync();
         }
 
         // GET: api/RequestLines/5
         [HttpGet("{id}")]
         public async Task<ActionResult<RequestLine>> GetRequestLine(int id)
         {
-            var requestLine = await _context.RequestLines.FindAsync(id);
+            var requestLine = await _context.RequestLines
+                                            //.Include(x => x.Request); ???
+                                            .FindAsync(id);
 
             if (requestLine == null)
             {
@@ -56,6 +80,7 @@ namespace prs_server.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                await RecalculateRequest(requestLine.RequestId);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -79,6 +104,7 @@ namespace prs_server.Controllers
         {
             _context.RequestLines.Add(requestLine);
             await _context.SaveChangesAsync();
+            await RecalculateRequest(requestLine.RequestId);
 
             return CreatedAtAction("GetRequestLine", new { id = requestLine.Id }, requestLine);
         }
@@ -95,6 +121,7 @@ namespace prs_server.Controllers
 
             _context.RequestLines.Remove(requestLine);
             await _context.SaveChangesAsync();
+            await RecalculateRequest(requestLine.RequestId);
 
             return NoContent();
         }

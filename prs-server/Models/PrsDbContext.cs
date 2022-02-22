@@ -14,8 +14,6 @@ namespace prs_server.Models {
         public virtual DbSet<RequestLine> RequestLines { get; set; }
 
 
-        public PrsDbContext() { }
-
         public PrsDbContext(DbContextOptions<PrsDbContext> options) : base(options) { }
 
 
